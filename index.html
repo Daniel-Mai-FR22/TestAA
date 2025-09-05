@@ -1,18 +1,124 @@
 <!DOCTYPE html>
-<html>
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-  <!-- we import arjs version without NFT but with marker + location based support -->
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  <body style="margin : 0px; overflow: hidden;">
-    <a-scene embedded arjs>
-      <a-marker preset="hiro">
-        <a-entity
-          position="0 0 0"
-          scale="0.05 0.05 0.05"
-          gltf-model="https://raw.githack.com/AR-js-org/AR.js/master/aframe/examples/image-tracking/nft/trex/scene.gltf"
-        ></a-entity>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>TP02 – Ex.3 (Interaction tap/click en AR)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <!-- AR.js (build pour A-Frame) -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+      html, body { margin: 0; padding: 0; overflow: hidden; }
+      /* (Optionnel) un petit réticule au centre de l’écran si bạn muốn hiển thị */
+      .reticle {
+        position: fixed; inset: 0; margin: auto; width: 16px; height: 16px;
+        border: 2px solid rgba(255,255,255,0.85); border-radius: 50%;
+        pointer-events: none;
+      }
+    </style>
+
+    <script>
+      // Component: logic đổi màu + animation khi click/tap
+      AFRAME.registerComponent('interactive-box', {
+        schema: {
+          colors: {default: '#4CC3D9,#EF2D5E,#FFC65D,#7BC8A4,#FFFFFF'}
+        },
+        init: function () {
+          const el = this.el;
+          this.colors = this.data.colors.split(',');
+          this.colorIndex = 0;
+          this.isBoosted = false;
+
+          // Bắt sự kiện click (desktop + mobile)
+          el.addEventListener('click', () => {
+            this.cycleColor();
+            this.toggleBoost();
+          });
+
+          // Chuẩn bị animation mặc định (xoay 1 vòng/3 giây)
+          if (!el.getAttribute('animation__spin')) {
+            el.setAttribute('animation__spin', {
+              property: 'rotation',
+              to: '0 360 0',
+              loop: true,
+              dur: 3000,
+              easing: 'linear'
+            });
+          }
+        },
+        cycleColor: function () {
+          this.colorIndex = (this.colorIndex + 1) % this.colors.length;
+          const newColor = this.colors[this.colorIndex];
+          // Đổi màu vật liệu
+          this.el.setAttribute('material', 'color', newColor);
+        },
+        toggleBoost: function () {
+          // Mỗi lần tap/click: bật/tắt chế độ "boost"
+          this.isBoosted = !this.isBoosted;
+
+          if (this.isBoosted) {
+            // Tăng tốc quay + scale to ra
+            this.el.setAttribute('animation__spin', 'dur', 1200); // quay nhanh
+            this.el.setAttribute('animation__pulse', {
+              property: 'scale',
+              dir: 'alternate',
+              from: '1 1 1',
+              to: '1.35 1.35 1.35',
+              loop: true,
+              dur: 500
+            });
+          } else {
+            // Trả về bình thường
+            this.el.setAttribute('animation__spin', 'dur', 3000);
+            this.el.removeAttribute('animation__pulse');
+            this.el.setAttribute('scale', '1 1 1');
+          }
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <!-- (Option) hiển thị reticle ở giữa màn hình cho mobile AR -->
+    <div class="reticle" aria-hidden="true"></div>
+
+    <!-- Lưu ý: không đặt camera thủ công trong AR.js -->
+    <a-scene
+      embedded
+      renderer="antialias: true"
+      arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+    >
+      <!-- Marker Hiro -->
+      <a-marker preset="hiro" emitevents="true">
+        <!-- Hộp tương tác: ban đầu bán trong suốt -->
+        <a-box class="interactable"
+               position="0 0.5 0"
+               width="1" height="1" depth="1"
+               material="color: #4CC3D9; opacity: 0.8; transparent: true"
+               interactive-box>
+        </a-box>
       </a-marker>
-      <a-entity camera></a-entity>
+
+      <!-- Cursors cho cả 2 trường hợp (desktop + mobile) -->
+      <!-- 1) Cursor theo vị trí chuột/ngón tay (desktop tốt, mobile nhiều trình duyệt cũng map tap -> mouse) -->
+      <a-entity
+        id="mouse-cursor"
+        cursor="rayOrigin: mouse"
+        raycaster="objects: .interactable"
+      ></a-entity>
+
+      <!-- 2) Cursor gắn vào camera (tâm màn hình) cho AR di chuyển theo thiết bị -->
+      <a-entity camera
+                cursor="fuse: false"
+                raycaster="objects: .interactable">
+      </a-entity>
     </a-scene>
+
+    <!-- Liên kết marker Hiro để in/mở trên máy khác:
+         https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png
+         hoặc
+         https://jeromeetienne.github.io/AR.js/data/images/HIRO.jpg
+    -->
   </body>
 </html>
